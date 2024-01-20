@@ -1,3 +1,3 @@
-module github.com/Link87/ttlmap
+module github.com/link87/ttlmap
 
 go 1.21.3
