@@ -106,8 +106,9 @@ func (m *TtlMap[K, V]) Put(key K, value V) {
 func (m *TtlMap[K, V]) Get(key K) (value V, ok bool) {
 	m.lock.RLock()
 	defer m.lock.RUnlock()
-	if it, ok := m.entries[key]; ok {
-		value = it.value
+	var item *item[V]
+	if item, ok = m.entries[key]; ok {
+		value = item.value
 	}
 	return
 }

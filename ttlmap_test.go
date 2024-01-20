@@ -99,6 +99,50 @@ func TestNoItemsExpired(t *testing.T) {
 //		}
 //	}
 
+func TestGet(t *testing.T) {
+	ttl := time.Second * 2
+	capacity := uint(3)
+	pruneInterval := time.Second * 3
+	tm := New[string, string](capacity, ttl, pruneInterval)
+	defer tm.Close()
+
+	// populate the TtlMap
+	tm.Put("myString", "a b c")
+
+	value, ok := tm.Get("myString")
+	if value != "a b c" {
+		t.Fatalf("value should equal \"a b c\", but actually equals %v\n", value)
+	}
+	if !ok {
+		t.Fatalf("ok returned by Get should be true, but is false")
+	}
+	value, ok = tm.Get("anotherString")
+	if value != "" {
+		t.Fatalf("value should equal \"\", but actually equals %v\n", value)
+	}
+	if ok {
+		t.Fatalf("ok returned by Get should be true, but is false")
+	}
+}
+
+func TestGetOrZero(t *testing.T) {
+	ttl := time.Second * 2
+	capacity := uint(3)
+	pruneInterval := time.Second * 3
+	tm := New[string, string](capacity, ttl, pruneInterval)
+	defer tm.Close()
+
+	// populate the TtlMap
+	tm.Put("myString", "a b c")
+
+	if value := tm.GetOrZero("myString"); value != "a b c" {
+		t.Fatalf("value should equal \"a b c\", but actually equals %v\n", value)
+	}
+	if value := tm.GetOrZero("anotherString"); value != "" {
+		t.Fatalf("value should equal \"\", but actually equals %v\n", value)
+	}
+}
+
 func TestDelete(t *testing.T) {
 	ttl := time.Second * 2
 	capacity := uint(3)
