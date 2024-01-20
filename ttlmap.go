@@ -22,7 +22,7 @@ import (
 	"time"
 )
 
-const version string = "1.5.1"
+const version string = "0.1.0"
 
 type Key interface {
 	comparable
