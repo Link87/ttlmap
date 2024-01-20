@@ -1,4 +1,4 @@
-package TtlMap
+package ttlmap
 
 import (
 	"maps"
@@ -69,11 +69,11 @@ func TestKeepFloat(t *testing.T) {
 		t.Fatalf("t.Len should equal 1, but actually equals %v\n", tm.Len())
 	}
 	all := tm.All()
-	if all[dontExpireKey].Value != 1234 {
-		t.Errorf("Value should equal 1234 but actually equals %v\n", all[dontExpireKey].Value)
+	if all[dontExpireKey].value != 1234 {
+		t.Errorf("value should equal 1234 but actually equals %v\n", all[dontExpireKey].value)
 	}
 	t.Logf("tm.Len: %v\n", tm.Len())
-	t.Logf("%v Value: %v\n", dontExpireKey, all[dontExpireKey].Value)
+	t.Logf("%v value: %v\n", dontExpireKey, all[dontExpireKey].value)
 }
 
 func TestWithNoRefresh(t *testing.T) {
@@ -176,8 +176,8 @@ func TestAllFunc(t *testing.T) {
 	tm.Put("uint64", u)
 
 	allItems := tm.All()
-	if !maps.Equal(allItems, tm.m) {
-		t.Fatalf("allItems and tm.m are not equal\n")
+	if !maps.Equal(allItems, tm.entries) {
+		t.Fatalf("allItems and tm.entries are not equal\n")
 	}
 }
 
@@ -224,7 +224,7 @@ func TestUInt64Key(t *testing.T) {
 
 	allItems := tm.All()
 	for k, v := range allItems {
-		t.Logf("k: %v   v: %v\n", k, v.Value)
+		t.Logf("k: %v   v: %v\n", k, v.value)
 	}
 
 	time.Sleep(maxTTL + pruneInterval)
@@ -248,7 +248,7 @@ func TestUFloat32Key(t *testing.T) {
 
 	allItems := tm.All()
 	for k, v := range allItems {
-		t.Logf("k: %v   v: %v\n", k, v.Value)
+		t.Logf("k: %v   v: %v\n", k, v.value)
 	}
 	t.Logf("k: 0.001   v:%v   (verified)\n", tm.Get(0.001))
 
@@ -272,7 +272,7 @@ func TestByteKey(t *testing.T) {
 
 	allItems := tm.All()
 	for k, v := range allItems {
-		t.Logf("k: %x   v: %v\n", k, v.Value)
+		t.Logf("k: %x   v: %v\n", k, v.value)
 	}
 	time.Sleep(maxTTL + pruneInterval)
 	t.Logf("tm.Len: %v\n", tm.Len())
