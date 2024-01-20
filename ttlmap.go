@@ -53,11 +53,11 @@ type TtlMap[K Key, V any] struct {
 	stop chan<- struct{}
 }
 
-func New[K Key, V any](size uint, ttl time.Duration, pruneInterval time.Duration) (m *TtlMap[K, V]) {
+func New[K Key, V any](capacity uint, ttl time.Duration, pruneInterval time.Duration) (m *TtlMap[K, V]) {
 
 	stop := make(chan struct{})
 	m = &TtlMap[K, V]{
-		entries: make(map[K]*item[V], size),
+		entries: make(map[K]*item[V], capacity),
 		ttl:     ttl,
 		stop:    stop,
 	}
@@ -104,6 +104,15 @@ func (m *TtlMap[K, V]) Put(key K, value V) {
 }
 
 func (m *TtlMap[K, V]) Get(key K) (value V, ok bool) {
+	m.lock.RLock()
+	defer m.lock.RUnlock()
+	if it, ok := m.entries[key]; ok {
+		value = it.value
+	}
+	return
+}
+
+func (m *TtlMap[K, V]) GetOrZero(key K) (value V) {
 	m.lock.RLock()
 	defer m.lock.RUnlock()
 	if it, ok := m.entries[key]; ok {
