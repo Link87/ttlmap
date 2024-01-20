@@ -16,50 +16,65 @@ Adopted from: https://stackoverflow.com/a/25487392/452281
 
 package ttlmap
 
+// TODO make it so that multiple operations are possible without having to unlock and lock again
+// TODO refresh TTLs of items: e.g. Touch() method, PutIfNew() method
+// TODO entry API
+// TODO TTLs per entry (second map type)
+// TODO switch from UNIX timestamp to some base time created in New()
+
 import (
 	"maps"
 	"sync"
 	"time"
 )
 
-const version string = "0.1.0"
+const version string = "0.1.1"
 
 type Key interface {
 	comparable
 }
 
+// item is an entry in a TtlMap.
 type item[V any] struct {
-	value      V
-	lastAccess int64
+	// value is the value of the item.
+	value V
+	// expires is the nanos UNIX timestamp when the item expires.
+	expires int64
 }
 
 type TtlMap[K Key, V any] struct {
+	// entries are the elements in this TtlMap.
 	entries map[K]*item[V]
-	lock    sync.RWMutex
-	stop    chan bool
+	// ttl is the time-to-live of each element. Saved as number of nanoseconds.
+	ttl time.Duration
+	// lock is the lock for synchronizing access to entries.
+	lock sync.RWMutex
+	// stop is the channel for stopping the prune goroutine.
+	stop chan<- struct{}
 }
 
 func New[K Key, V any](size uint, ttl time.Duration, pruneInterval time.Duration) (m *TtlMap[K, V]) {
-	// if pruneInterval > ttl {
-	// 	print("WARNING: TtlMap: pruneInterval > ttl\n")
-	// }
+
+	stop := make(chan struct{})
 	m = &TtlMap[K, V]{
 		entries: make(map[K]*item[V], size),
-		stop:    make(chan bool),
+		ttl:     ttl,
+		stop:    stop,
 	}
-	ttl /= 1_000_000_000
-	// print("ttl: ", ttl, "\n")
+
 	go func() {
+		ticker := time.NewTicker(pruneInterval)
+		defer ticker.Stop()
 		for {
 			select {
-			case <-m.stop:
+			case <-stop:
 				return
-			case now := <-time.Tick(pruneInterval):
-				currentTime := now.Unix()
+			case now := <-ticker.C:
+				currentTime := now.UnixNano()
 				m.lock.Lock()
 				for k, v := range m.entries {
 					// print("TICK:", currentTime, "  ", v.lastAccess, "  ", currentTime-v.lastAccess, "  ", ttl, "  ", k, "\n")
-					if currentTime-v.lastAccess >= int64(ttl) {
+					if currentTime >= v.expires {
 						delete(m.entries, k)
 						// print("deleting: ", k, "\n")
 					}
@@ -83,12 +98,12 @@ func (m *TtlMap[K, V]) Put(key K, value V) {
 	m.lock.Lock()
 	defer m.lock.Unlock()
 	m.entries[key] = &item[V]{
-		value:      value,
-		lastAccess: time.Now().Unix(),
+		value:   value,
+		expires: time.Now().Add(m.ttl).UnixNano(),
 	}
 }
 
-func (m *TtlMap[K, V]) Get(key K) (value V) {
+func (m *TtlMap[K, V]) Get(key K) (value V, ok bool) {
 	m.lock.RLock()
 	defer m.lock.RUnlock()
 	if it, ok := m.entries[key]; ok {
@@ -102,7 +117,6 @@ func (m *TtlMap[K, V]) Delete(key K) bool {
 	defer m.lock.Unlock()
 	_, ok := m.entries[key]
 	if !ok {
-		m.lock.Unlock()
 		return false
 	}
 	delete(m.entries, key)
@@ -124,6 +138,6 @@ func (m *TtlMap[K, V]) Copy() map[K]*item[V] {
 }
 
 func (m *TtlMap[K, V]) Close() {
-	m.stop <- true
+	m.stop <- struct{}{}
 	m.Clear()
 }
